@@ -6,10 +6,15 @@
         "use": "@vercel/python"
       }
     ],
+    "env": {
+      "REDDIT_CLIENT_ID": "@reddit_client_id",
+      "REDDIT_CLIENT_SECRET": "@reddit_client_secret",
+      "REDDIT_USER_AGENT": "@reddit_user_agent"
+    },
     "routes": [
       {
-        "src": "/random-meme",
-        "dest": "app.py"
+        "src": "/meme",
+        "dest": "/app.py"
       }
     ]
   }

@@ -15,8 +15,8 @@ reddit = praw.Reddit(
     user_agent=os.getenv("REDDIT_USER_AGENT")
 )
 
-@app.route("/get_image", methods=["GET"])
-def get_image():
+@app.route("/meme", methods=["GET"])
+def meme():
     # Fetch top posts from r/ProgrammerHumor
     subreddit = reddit.subreddit("ProgrammerHumor")
     posts = subreddit.top(limit=10)  # Get top 10 posts
