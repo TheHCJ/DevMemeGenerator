@@ -77,8 +77,13 @@ def random_meme():
             as_attachment=False,
             download_name="meme.webp"
         )
+    except requests.exceptions.RequestException as e:
+        print(f"Request Error: {str(e)}")  # Log the error for debugging
+        return jsonify({"error": "There was an issue with the Reddit API request."}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"General Error: {str(e)}")  # Log the error for debugging
+        return jsonify({"error": "An unexpected error occurred."}), 500
+
 
 # Run the app
 if __name__ == "__main__":
