@@ -1,37 +1,35 @@
-from dotenv import load_dotenv
 import os
-import requests
 import random
-from flask import Flask, send_file, jsonify
+import requests
 from io import BytesIO
 from PIL import Image
+from flask import Flask, send_file, jsonify
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# Initialize Flask app
 app = Flask(__name__)
 
 # Reddit API credentials from environment variables
 CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
 CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
 USER_AGENT = os.getenv("REDDIT_USER_AGENT")
-
 SUBREDDIT = "ProgrammerHumor"
+
 HEADERS = {"User-Agent": USER_AGENT}
 
 def get_reddit_access_token():
     """Fetch an access token from Reddit."""
     auth = requests.auth.HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET)
     data = {"grant_type": "client_credentials"}
-    headers = {"User-Agent": USER_AGENT}
     response = requests.post(
-        "https://www.reddit.com/api/v1/access_token",
-        auth=auth,
-        data=data,
-        headers=headers,
+        "https://www.reddit.com/api/v1/access_token", 
+        auth=auth, data=data, headers=HEADERS
     )
     response.raise_for_status()
-    return response.json()["access_token"]
+    return response.json().get("access_token")
 
 def fetch_random_meme(access_token):
     """Fetch a random meme from the subreddit."""
@@ -45,46 +43,41 @@ def fetch_random_meme(access_token):
     image_posts = [
         post["data"]
         for post in posts
-        if post["data"]["url"].endswith(("jpg", "png", "gif"))
+        if post["data"]["url"].endswith(("jpg", "jpeg", "png", "gif"))
     ]
     if not image_posts:
-        raise Exception("No image posts found.")
+        raise Exception("No valid image posts found.")
+    
     meme = random.choice(image_posts)
-    return {"title": meme["title"], "url": meme["url"]}
+    return meme["data"]["url"]
 
-def convert_to_webp(image_url):
-    """Convert the image to WebP format."""
+def convert_to_image(image_url):
+    """Fetch and convert the image to a supported format."""
     response = requests.get(image_url)
     response.raise_for_status()
     img = Image.open(BytesIO(response.content))
 
-    # Convert to WebP
-    webp_image = BytesIO()
-    img.save(webp_image, format="WEBP")
-    webp_image.seek(0)
-    return webp_image
+    # Convert to a common image format (JPEG) for broad compatibility
+    image_output = BytesIO()
+    img.save(image_output, format="JPEG")
+    image_output.seek(0)
+    return image_output
 
 @app.route("/random-meme", methods=["GET"])
 def random_meme():
-    """API endpoint to get a random developer meme."""
+    """API endpoint to return a random developer meme as an image."""
     try:
         access_token = get_reddit_access_token()
-        meme = fetch_random_meme(access_token)
-        webp_image = convert_to_webp(meme["url"])
-        return send_file(
-            webp_image,
-            mimetype="image/webp",
-            as_attachment=False,
-            download_name="meme.webp"
-        )
-    except requests.exceptions.RequestException as e:
-        print(f"Request Error: {str(e)}")  # Log the error for debugging
-        return jsonify({"error": "There was an issue with the Reddit API request."}), 500
+        meme_url = fetch_random_meme(access_token)
+        image_data = convert_to_image(meme_url)
+
+        # Send the image in a standard format
+        return send_file(image_data, mimetype="image/jpeg")
+    
     except Exception as e:
-        print(f"General Error: {str(e)}")  # Log the error for debugging
-        return jsonify({"error": "An unexpected error occurred."}), 500
+        print(f"Error: {e}")
+        return jsonify({"error": "Failed to fetch meme image."}), 500
 
-
-# Run the app
+# Vercel expects the app to be callable as a WSGI application.
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
