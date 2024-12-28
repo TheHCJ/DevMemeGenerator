@@ -1,10 +1,9 @@
 import os
 import random
 import requests
-from io import BytesIO
-from PIL import Image
 from flask import Flask, send_file, jsonify
 from dotenv import load_dotenv
+from io import BytesIO
 
 # Load environment variables
 load_dotenv()
@@ -51,29 +50,20 @@ def fetch_random_meme(access_token):
     meme = random.choice(image_posts)
     return meme["data"]["url"]
 
-def convert_to_image(image_url):
-    """Fetch and convert the image to a supported format."""
-    response = requests.get(image_url)
-    response.raise_for_status()
-    img = Image.open(BytesIO(response.content))
-
-    # Convert to a common image format (JPEG) for broad compatibility
-    image_output = BytesIO()
-    img.save(image_output, format="JPEG")
-    image_output.seek(0)
-    return image_output
-
 @app.route("/random-meme", methods=["GET"])
 def random_meme():
     """API endpoint to return a random developer meme as an image."""
     try:
         access_token = get_reddit_access_token()
         meme_url = fetch_random_meme(access_token)
-        image_data = convert_to_image(meme_url)
 
-        # Send the image in a standard format
-        return send_file(image_data, mimetype="image/jpeg")
-    
+        # Fetch the image directly from Reddit and return it to the client
+        response = requests.get(meme_url)
+        response.raise_for_status()
+        
+        # Send the image directly to the user
+        return send_file(BytesIO(response.content), mimetype=response.headers["Content-Type"])
+
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({"error": "Failed to fetch meme image."}), 500
